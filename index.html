@@ -10,10 +10,7 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">P</div>
-        <div><strong>PuduBag</strong><span>EXPORT RADAR</span></div>
-      </div>
+      <div class="brand"><div class="brand-mark">P</div><div><strong>PuduBag</strong><span>EXPORT RADAR</span></div></div>
       <nav id="nav">
         <button class="nav-item active" data-view="dashboard">⌂ <span>Dashboard</span></button>
         <button class="nav-item" data-view="buyers">◎ <span>Alıcı Bul</span></button>
@@ -24,59 +21,17 @@
         <button class="nav-item" data-view="contacts">✉ <span>İletişim Merkezi</span></button>
         <button class="nav-item" data-view="settings">⚙ <span>Veri Kaynakları</span></button>
       </nav>
-      <div class="sidebar-footer">
-        <div class="demo-pill" id="dataModePill">ENTEGRASYON HAZIR</div>
-        <small id="dataModeText">API anahtarları ve Supabase bağlantısı bekleniyor.</small>
-      </div>
+      <div class="sidebar-footer"><div class="demo-pill" id="dataModePill">ENTEGRASYON HAZIR</div><small id="dataModeText">API anahtarları ve Supabase bağlantısı bekleniyor.</small></div>
     </aside>
-
     <main class="main">
-      <header class="topbar">
-        <div>
-          <div class="eyebrow">PUDUBAG INTERNATIONAL SALES INTELLIGENCE</div>
-          <h1 id="viewTitle">İhracat Dashboard</h1>
-        </div>
-        <div class="top-actions">
-          <button class="ghost" id="exportCsvBtn">CSV Dışa Aktar</button>
-          <button class="primary" data-view-jump="buyers">+ Yeni Alıcı Ara</button>
-        </div>
-      </header>
-
-      <section id="globalSearch" class="global-search">
-        <div class="search-box">
-          <span>⌕</span>
-          <input id="globalSearchInput" placeholder="Firma, ürün, ülke, HS kodu veya Türk ihracatçı ara…" />
-          <button id="globalSearchBtn">Ara</button>
-        </div>
-        <div class="quick-filters">
-          <button data-query="Türkiye'den alım yapan">Türkiye'den Alım Yapanlar</button>
-          <button data-query="Germany">Almanya</button>
-          <button data-query="Saudi Arabia">Suudi Arabistan</button>
-          <button data-query="tote bag">Tote Bag</button>
-          <button data-query="cosmetic bag">Cosmetic Bag</button>
-        </div>
-      </section>
-
-      <section id="view-dashboard" class="view active"></section>
-      <section id="view-buyers" class="view"></section>
-      <section id="view-exporters" class="view"></section>
-      <section id="view-watchlist" class="view"></section>
-      <section id="view-crm" class="view"></section>
-      <section id="view-countries" class="view"></section>
-      <section id="view-contacts" class="view"></section>
-      <section id="view-settings" class="view"></section>
+      <header class="topbar"><div><div class="eyebrow">PUDUBAG INTERNATIONAL SALES INTELLIGENCE</div><h1 id="viewTitle">İhracat Dashboard</h1></div><div class="top-actions"><button class="ghost" id="exportCsvBtn">CSV Dışa Aktar</button><button class="primary" data-view-jump="buyers">+ Yeni Alıcı Ara</button></div></header>
+      <section id="globalSearch" class="global-search"><div class="search-box"><span>⌕</span><input id="globalSearchInput" placeholder="Firma, ürün, ülke, HS kodu veya Türk ihracatçı ara…" /><button id="globalSearchBtn">Ara</button></div><div class="quick-filters"><button data-query="Türkiye'den alım yapan">Türkiye'den Alım Yapanlar</button><button data-query="Germany">Almanya</button><button data-query="Saudi Arabia">Suudi Arabistan</button><button data-query="tote bag">Tote Bag</button><button data-query="cosmetic bag">Cosmetic Bag</button></div></section>
+      <section id="view-dashboard" class="view active"></section><section id="view-buyers" class="view"></section><section id="view-exporters" class="view"></section><section id="view-watchlist" class="view"></section><section id="view-crm" class="view"></section><section id="view-countries" class="view"></section><section id="view-contacts" class="view"></section><section id="view-settings" class="view"></section>
     </main>
   </div>
-
-  <div id="modal" class="modal hidden" aria-hidden="true">
-    <div class="modal-backdrop" data-close-modal></div>
-    <div class="modal-card">
-      <button class="modal-close" data-close-modal>×</button>
-      <div id="modalContent"></div>
-    </div>
-  </div>
-
+  <div id="modal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-modal></div><div class="modal-card"><button class="modal-close" data-close-modal>×</button><div id="modalContent"></div></div></div>
   <script src="assets/config.js"></script>
   <script src="assets/app.js"></script>
+  <script src="assets/live-search.js"></script>
 </body>
 </html>
