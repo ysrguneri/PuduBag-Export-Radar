@@ -1,0 +1,54 @@
+(function () {
+  'use strict';
+
+  var candidates = [
+    { name:'Alsannat For Luggage', city:'Riyadh + Jeddah + Madinah + Dammam + Khobar', category:'Çanta / valiz / seyahat aksesuarları', score:96, email:'support@alsannat.com', phone:'+966 920 033 107', web:'https://alsannat.com/', instagram:'', note:'Suudi Arabistan’da çanta, valiz, sırt çantası ve seyahat aksesuarlarında güçlü alıcı adayı.' },
+    { name:'Blue Cloud', city:'Jeddah', category:'Hediyelik / souvenir / employee bags', score:95, email:'info@bluecloudsa.com', phone:'+966 56 577 6773', web:'https://bluecloudsa.com/', instagram:'', note:'Hediyelik, souvenir ve employee bags ithalatı yaptığını belirtiyor.' },
+    { name:'Taibah Gifts', city:'Makkah / Madinah', category:'Hediyelik / Haremeyn ürünleri', score:94, email:'info@taibahgifts.com', phone:'+966 53 513 7779', web:'https://taibahgifts.com/', instagram:'https://www.instagram.com/taibahgifts/', note:'Haremeyn temalı hediyelikler ve aksesuarlar; PuduBag için yüksek uyum.' },
+    { name:'Corporate Gifts Riyadh', city:'Riyadh + Jeddah', category:'Kurumsal hediyelik / backpack / travel bags', score:93, email:'sales@corporategiftsriyadh.com', phone:'+966 50 864 2506', web:'https://corporategiftsriyadh.com/', instagram:'', note:'Backpack, laptop bag, travel bag, cosmetic bag ve kurumsal hediyelik kategorileri bulunuyor.' },
+    { name:'Jumairah Marketing', city:'Riyadh + Jeddah + Dammam + Khobar', category:'Çanta / distribütör', score:88, email:'', phone:'', web:'https://jumairah.co/', instagram:'', note:'Suudi Arabistan’da büyük çanta markalarının distribütörü; B2B iş birliği için değerlendirilecek.' },
+    { name:'Dune', city:'Riyadh', category:'Çanta mağazası', score:78, email:'', phone:'', web:'', instagram:'', note:'Riyadh Park Mall’da çanta mağazası.' },
+    { name:'SOUVENIR', city:'Riyadh', category:'Souvenir / hediyelik', score:78, email:'', phone:'+966 920 009 759', web:'', instagram:'', note:'Doğrudan souvenir mağazası.' },
+    { name:'Meshmeshgifts', city:'Riyadh', category:'Souvenir / hediyelik', score:76, email:'', phone:'+966 56 120 1022', web:'', instagram:'', note:'Souvenir mağazası; e-posta Hunter ile aranacak.' }
+  ];
+
+  var profile = {
+    name:'PuduBag Atölye', phone:'+90 507 772 7003', email:'pudubagatolye@gmail.com', web:'https://www.pudubag.com/', instagram:'https://www.instagram.com/pudubagatolye/'
+  };
+
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function mailHref(c) {
+    if (!c.email) return '';
+    var subject = encodeURIComponent('Türkiye’den Çanta ve Hediyelik Ürün Tedarik Teklifi – PuduBag');
+    var body = encodeURIComponent('Merhaba,\n\nBen PuduBag Atölye’den yazıyorum. Türkiye’de çanta ve hediyelik ürünler üretiyoruz. Suudi Arabistan pazarında iş ortaklığı ve toptan tedarik konusunda görüşmek isteriz.\n\nWeb: ' + profile.web + '\nInstagram: ' + profile.instagram + '\nTelefon / WhatsApp: ' + profile.phone + '\nE-posta: ' + profile.email + '\n\nUygun olursanız ürün kataloğumuzu ve fiyatlarımızı paylaşabiliriz.\n\nSaygılarımla,\nPuduBag Atölye');
+    return 'mailto:' + encodeURIComponent(c.email) + '?subject=' + subject + '&body=' + body;
+  }
+
+  function render() {
+    var view = document.getElementById('view-saudi');
+    if (!view) return;
+    var rows = candidates.map(function (c, i) {
+      var links = '';
+      if (c.web) links += '<a href="' + esc(c.web) + '" target="_blank" rel="noopener">Web</a> ';
+      if (c.instagram) links += '<a href="' + esc(c.instagram) + '" target="_blank" rel="noopener">Instagram</a> ';
+      var mail = c.email ? '<a class="saudi-mail" href="' + mailHref(c) + '">✉ Mail Hazırla</a>' : '<button class="saudi-hunter" data-i="' + i + '">Hunter ile E-posta Bul</button>';
+      return '<div class="saudi-card"><div class="saudi-main"><div><h3>' + esc(c.name) + '</h3><div class="saudi-meta">📍 ' + esc(c.city) + ' · 🏷️ ' + esc(c.category) + '</div><p>' + esc(c.note) + '</p></div><div class="saudi-score">' + c.score + '<small>/100</small></div></div><div class="saudi-info"><span>✉ ' + esc(c.email || 'E-posta aranacak') + '</span><span>☎ ' + esc(c.phone || '—') + '</span></div><div class="saudi-actions">' + links + mail + '<button class="saudi-watch" data-i="' + i + '">⭐ Takibe Al</button></div><div class="saudi-msg" id="saudi-msg-' + i + '"></div></div>';
+    }).join('');
+
+    view.innerHTML = '<div class="saudi-wrap"><div class="saudi-head"><div><div class="eyebrow">30 AĞUSTOS SUUDİ ARABİSTAN SEFERİ</div><h2>🇸🇦 Suudi Arabistan Alıcıları</h2><p>Çanta, hediyelik, souvenir, Hac/Umre ve kurumsal hediye alıcıları.</p></div><div class="saudi-profile"><b>PuduBag</b><br>' + esc(profile.phone) + '<br>' + esc(profile.email) + '</div></div><div class="saudi-toolbar"><input id="saudiFilter" placeholder="Şehir, firma veya kategori filtrele…"><button id="saudiMailAll">✉ Seçilenlere Mail Hazırla</button></div><div id="saudiList">' + rows + '</div><div class="saudi-foot">Not: E-posta bulunmayan firmalar Hunter ile zenginleştirilecek. Gönderimden önce alıcıları sen onaylayacaksın.</div></div>';
+    bind();
+  }
+
+  function bind() {
+    var filter = document.getElementById('saudiFilter');
+    if (filter) filter.addEventListener('input', function () { var q = filter.value.toLowerCase(); document.querySelectorAll('.saudi-card').forEach(function (el) { el.style.display = el.textContent.toLowerCase().indexOf(q) >= 0 ? '' : 'none'; }); });
+    document.querySelectorAll('.saudi-watch').forEach(function (btn) { btn.addEventListener('click', function () { var c = candidates[Number(btn.dataset.i)]; var msg = document.getElementById('saudi-msg-' + btn.dataset.i); msg.textContent = '⭐ ' + c.name + ' takip için işaretlendi. Gerçek CRM kaydı, canlı firma kimliği eşleştirmesi tamamlandıktan sonra yapılacak.'; btn.textContent = '✓ Takipte'; }); });
+    document.querySelectorAll('.saudi-hunter').forEach(function (btn) { btn.addEventListener('click', function () { var c = candidates[Number(btn.dataset.i)]; var msg = document.getElementById('saudi-msg-' + btn.dataset.i); msg.textContent = 'Hunter araması bu firmaya mevcut canlı zenginleştirme akışından bağlanacak: ' + c.name; }); });
+    var all = document.getElementById('saudiMailAll');
+    if (all) all.addEventListener('click', function () { var emails = candidates.filter(function (c) { return c.email; }).map(function (c) { return c.email; }); if (!emails.length) return; window.location.href = mailHref({email: emails.join(',')}); });
+  }
+
+  function mount() { render(); }
+  window.renderSaudiBuyers = mount;
+  document.addEventListener('DOMContentLoaded', mount);
+}());
