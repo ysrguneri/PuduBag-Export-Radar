@@ -1,14 +1,92 @@
 (() => {
-  const CFG=window.PUDU_CONFIG||{}, URL=CFG.supabaseUrl||'https://leldkwovorbspnzkedhd.supabase.co', KEY=CFG.supabaseAnonKey||'';
-  const IMPORT=`${URL}/functions/v1/pudubag-importyeti-search`, HUNTER=`${URL}/functions/v1/pudubag-hunter-enrich`;
-  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  async function call(url,body){if(!KEY)throw Error('Supabase publishable key bulunamadı.');const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',apikey:KEY,Authorization:`Bearer ${KEY}`},body:JSON.stringify(body)}),d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false)throw Error(d.error||`İstek başarısız (${r.status})`);return d}
-  function card(x,i){const role=x.role==='company'?'Alıcı':x.role==='supplier'?'Tedarikçi':(x.role||'Kayıt');return `<article class="buyer-card live-buyer-card"><div class="top"><div><div class="name">${esc(x.name)}</div><div class="meta">${esc(x.city)}${x.city&&x.country?', ':''}${esc(x.country)} • ${esc(role)}</div></div><span class="score medium">${esc(x.score||50)}</span></div><div class="tags"><span class="tag">ImportYeti</span><span class="tag">${esc(x.shipments)} sevkiyat</span></div><div class="small">Son alım: ${esc(x.last||'—')} • ${esc(x.address||'Adres yok')}</div><div class="hunter-result" id="hunter-${i}"></div><div class="foot"><div class="metric-mini"><strong>${esc(x.shipments)}</strong><span>sevkiyat</span></div><div class="metric-mini"><strong>${esc(x.otherNames)}</strong><span>isim</span></div><a class="ghost" href="${esc(x.url||'#')}" target="_blank" rel="noopener">ImportYeti ↗</a><button class="ghost hunter-btn" data-hunter-index="${i}">🔎 Hunter ile Zenginleştir</button></div></article>`}
-  async function enrich(x,i){const host=document.querySelector(`#hunter-${i}`),btn=document.querySelector(`[data-hunter-index="${i}"]`);if(!host||!btn)return;btn.disabled=true;btn.textContent='Hunter aranıyor…';host.innerHTML='<div class="small muted">Domain ve e-postalar aranıyor…</div>';try{const f=await call(HUNTER,{action:'domain_finder',company:x.name||''});const domain=f?.data?.domain||'';if(!domain)throw Error('Hunter şirket domaini bulamadı.');const d=await call(HUNTER,{action:'domain_search',domain,limit:10});const es=Array.isArray(d.data?.emails)?d.data.emails:[];host.innerHTML=`<div class="card hunter-inline"><strong>Hunter</strong><div class="small">🌐 ${esc(domain)}</div><div class="small">${es.length?`📧 ${es.slice(0,5).map(e=>esc(e.value)).join(' • ')`:'📧 E-posta bulunamadı.'}</div></div>`}catch(e){host.innerHTML=`<div class="small">Hunter: ${esc(e.message)}</div>`}finally{btn.disabled=false;btn.textContent='🔎 Hunter ile Zenginleştir'}}
-  window.renderLiveBuyers=function(){const h=document.querySelector('#view-buyers');if(!h)return;h.innerHTML=`<div class="card"><div class="card-head"><div><h2>Alıcı İstihbaratı</h2><div class="muted small">ImportYeti canlı arama • Hunter isteğe bağlı</div></div><span class="demo-pill">CANLI VERİ</span></div><div class="filters"><input id="liveBuyerQuery" placeholder="Ürün veya firma: backpack, luggage, cosmetic bag…"><button id="liveBuyerSearch" class="primary">Ara</button></div><div id="liveBuyerMeta" class="muted small" style="margin:12px 0"></div><div id="liveBuyerGrid" class="grid buyer-cards"><div class="empty">Bir ürün veya firma arayın.</div></div></div>`;const input=document.querySelector('#liveBuyerQuery'),b=document.querySelector('#liveBuyerSearch'),m=document.querySelector('#liveBuyerMeta'),g=document.querySelector('#liveBuyerGrid');async function run(){const q=input.value.trim();if(!q)return;b.disabled=true;b.textContent='Aranıyor…';m.textContent='ImportYeti sorgulanıyor…';g.innerHTML='<div class="empty">Canlı veri alınıyor…</div>';try{const d=await call(IMPORT,{query:q,page:1});const rows=Array.isArray(d.results)?d.results:[];m.textContent=`${d.found??rows.length} sonuç bulundu • ${d.saved??0} kayıt Supabase'e işlendi • Toplam: ${d.totalHits??'—'}`;g.innerHTML=rows.length?rows.map(card).join(''):'<div class="empty">ImportYeti sonuç döndürmedi.</div>';g.querySelectorAll('.hunter-btn').forEach(x=>x.addEventListener('click',()=>enrich(rows[+x.dataset.hunterIndex],+x.dataset.hunterIndex)))}catch(e){m.textContent='Canlı arama hatası';g.innerHTML=`<div class="empty">${esc(e.message)}</div>`}finally{b.disabled=false;b.textContent='Ara'}}b.addEventListener('click',run);input.addEventListener('keydown',e=>{if(e.key==='Enter')run()})};
-  window.renderBuyers=()=>window.renderLiveBuyers();
-  const oldRender=window.render;
-  if(oldRender) window.render=v=>v==='buyers'?window.renderLiveBuyers():oldRender(v);
-  function intercept(e){const el=e.target.closest?.('[data-view="buyers"],[data-view-jump="buyers"]');if(!el)return;e.preventDefault();e.stopImmediatePropagation();window.renderLiveBuyers();document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view==='buyers'));const t=document.querySelector('#viewTitle');if(t)t.textContent='Alıcı Bul';document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-buyers'));}
-  document.addEventListener('click',intercept,true);
+  const CFG = window.PUDU_CONFIG || {};
+  const SUPABASE_URL = CFG.supabaseUrl || 'https://leldkwovorbspnzkedhd.supabase.co';
+  const SUPABASE_KEY = CFG.supabaseAnonKey || '';
+  const IMPORT_URL = SUPABASE_URL + '/functions/v1/pudubag-importyeti-search';
+
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (m) => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[m]));
+
+  async function importSearch(query) {
+    if (!SUPABASE_KEY) throw new Error('Supabase publishable key bulunamadı.');
+    const response = await fetch(IMPORT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_KEY,
+        Authorization: 'Bearer ' + SUPABASE_KEY
+      },
+      body: JSON.stringify({ query: query, page: 1 })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || ('İstek başarısız (' + response.status + ')'));
+    }
+    return data;
+  }
+
+  function renderCard(row) {
+    const role = row.role === 'company' ? 'Alıcı' : row.role === 'supplier' ? 'Tedarikçi' : (row.role || 'Kayıt');
+    return '<article class="buyer-card live-buyer-card">' +
+      '<div class="top"><div><div class="name">' + esc(row.name) + '</div>' +
+      '<div class="meta">' + esc(row.city) + (row.city && row.country ? ', ' : '') + esc(row.country) + ' • ' + esc(role) + '</div></div>' +
+      '<span class="score medium">' + esc(row.score || 50) + '</span></div>' +
+      '<div class="tags"><span class="tag">ImportYeti</span><span class="tag">' + esc(row.shipments || 0) + ' sevkiyat</span></div>' +
+      '<div class="small">Son alım: ' + esc(row.last || '—') + ' • ' + esc(row.address || 'Adres yok') + '</div>' +
+      '<div class="foot"><a class="ghost" href="' + esc(row.url || '#') + '" target="_blank" rel="noopener">ImportYeti ↗</a></div>' +
+      '</article>';
+  }
+
+  window.renderLiveBuyers = function(initialQuery) {
+    const host = document.querySelector('#view-buyers');
+    if (!host) return;
+
+    host.innerHTML = '<div class="card">' +
+      '<div class="card-head"><div><h2>ImportYeti Gerçek Veri Arama</h2>' +
+      '<div class="muted small">Canlı ImportYeti verisi</div></div><span class="demo-pill">CANLI VERİ</span></div>' +
+      '<div class="filters"><input id="liveBuyerQuery" placeholder="Ürün veya firma: backpack, luggage, cosmetic bag…" value="' + esc(initialQuery || '') + '">' +
+      '<button id="liveBuyerSearch" class="primary" type="button">Ara</button></div>' +
+      '<div id="liveBuyerMeta" class="muted small" style="margin:12px 0"></div>' +
+      '<div id="liveBuyerGrid" class="grid buyer-cards"><div class="empty">Bir ürün veya firma yazıp Ara butonuna basın.</div></div></div>';
+
+    const input = document.querySelector('#liveBuyerQuery');
+    const button = document.querySelector('#liveBuyerSearch');
+    const meta = document.querySelector('#liveBuyerMeta');
+    const grid = document.querySelector('#liveBuyerGrid');
+
+    async function run() {
+      const query = input.value.trim();
+      if (!query) {
+        meta.textContent = 'Önce bir ürün veya firma yazın.';
+        input.focus();
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Aranıyor…';
+      meta.textContent = 'ImportYeti sorgulanıyor…';
+      grid.innerHTML = '<div class="empty">Gerçek veri alınıyor…</div>';
+      try {
+        const data = await importSearch(query);
+        const rows = Array.isArray(data.results) ? data.results : [];
+        meta.textContent = (data.found != null ? data.found : rows.length) + ' sonuç bulundu • ' + (data.saved || 0) + ' kayıt işlendi • Toplam: ' + (data.totalHits != null ? data.totalHits : '—');
+        grid.innerHTML = rows.length ? rows.map(renderCard).join('') : '<div class="empty">ImportYeti sonuç döndürmedi.</div>';
+      } catch (error) {
+        meta.textContent = 'Canlı arama hatası';
+        grid.innerHTML = '<div class="empty">' + esc(error.message) + '</div>';
+        console.error('ImportYeti live search:', error);
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Ara';
+      }
+    }
+
+    button.addEventListener('click', run);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') run();
+    });
+    if (initialQuery) run();
+  };
+
+  window.renderBuyers = window.renderLiveBuyers;
 })();
