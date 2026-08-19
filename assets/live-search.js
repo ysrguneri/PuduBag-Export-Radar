@@ -4,19 +4,26 @@
   var cfg = window.PUDU_CONFIG || {};
   var supabaseUrl = cfg.supabaseUrl || 'https://leldkwovorbspnzkedhd.supabase.co';
   var anonKey = cfg.supabaseAnonKey || '';
-  var base = supabaseUrl + '/functions/v1/';
-  var importUrl = base + 'pudubag-importyeti-search';
-  var hunterUrl = base + 'pudubag-hunter-enrich';
+  var baseUrl = supabaseUrl + '/functions/v1/';
+  var importUrl = baseUrl + 'pudubag-importyeti-search';
+  var hunterUrl = baseUrl + 'pudubag-hunter-enrich';
   var rpcUrl = supabaseUrl + '/rest/v1/rpc/update_export_lead';
 
   function esc(value) {
-    return String(value == null ? '' : value).replace(/[&<>"']/g, function (m) {
-      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m];
+    var text = String(value == null ? '' : value);
+    return text.replace(/[&<>"']/g, function (ch) {
+      if (ch === '&') return '&amp;';
+      if (ch === '<') return '&lt;';
+      if (ch === '>') return '&gt;';
+      if (ch === '"') return '&quot;';
+      return '&#39;';
     });
   }
 
-  function request(url, body) {
-    if (!anonKey) return Promise.reject(new Error('Supabase publishable key bulunamadı.'));
+  function post(url, body) {
+    if (!anonKey) {
+      return Promise.reject(new Error('Supabase publishable key bulunamadı.'));
+    }
     return fetch(url, {
       method: 'POST',
       headers: {
@@ -25,50 +32,61 @@
         'Authorization': 'Bearer ' + anonKey
       },
       body: JSON.stringify(body)
-    }).then(function (res) {
-      return res.text().then(function (text) {
+    }).then(function (response) {
+      return response.text().then(function (text) {
         var data = {};
-        try { data = JSON.parse(text); } catch (_) {}
-        if (!res.ok || data.ok === false) {
-          throw new Error(data.error || data.message || 'İstek başarısız (' + res.status + ')');
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          data = {};
+        }
+        if (!response.ok || data.ok === false) {
+          throw new Error(data.error || data.message || 'İstek başarısız (' + response.status + ')');
         }
         return data;
       });
     });
   }
 
-  function calculateScore(row) {
+  function score(row) {
     var shipments = Number(row.shipments || row.totalShipments || 0);
-    var score = Math.min(45, shipments * 5);
+    var value = Math.min(45, shipments * 5);
     var recent = String(row.last || row.mostRecentShipment || '');
-    if (/2024|2025|2026/.test(recent)) score += 35;
-    else if (/2022|2023/.test(recent)) score += 20;
-    else if (recent) score += 10;
-    return Math.min(100, Math.round(score));
+    if (/2024|2025|2026/.test(recent)) value += 35;
+    else if (/2022|2023/.test(recent)) value += 20;
+    else if (recent) value += 10;
+    return Math.min(100, Math.round(value));
   }
 
-  function saveLead(id, status, watchlisted, score) {
-    return request(rpcUrl, {
+  function saveLead(id, status, watchlisted, leadScore) {
+    return post(rpcUrl, {
       p_source_external_id: id,
       p_status: status,
       p_watchlisted: watchlisted,
-      p_score: score
+      p_score: leadScore
     });
   }
 
-  function enrich(company, box, button) {
-    box.textContent = 'Hunter aranıyor: ' + company + '...';
+  function enrich(name, box, button) {
+    box.textContent = 'Hunter aranıyor...';
     button.disabled = true;
-    request(hunterUrl, { action: 'domain_finder', company: company, limit: 5 })
-      .then(function (data) {
-        var list = Array.isArray(data.data) ? data.data : [];
-        var domain = list.length && list[0].domain ? list[0].domain : '';
+    post(hunterUrl, { action: 'domain_finder', company: name, limit: 5 })
+      .then(function (result) {
+        var list = Array.isArray(result.data) ? result.data : [];
+        var domain = list.length && list[0] ? list[0].domain : '';
         if (!domain) throw new Error('Hunter domain bulamadı.');
-        return request(hunterUrl, { action: 'domain_search', domain: domain, limit: 10 })
+        return post(hunterUrl, { action: 'domain_search', domain: domain, limit: 10 })
           .then(function (search) {
             var emails = search.data && Array.isArray(search.data.emails) ? search.data.emails : [];
-            box.innerHTML = '<b>Hunter sonucu</b><br>🌐 ' + esc(domain) + '<br>' +
-              (emails.length ? emails.map(function (item) { return esc(item.value || item.email || ''); }).filter(Boolean).join('<br>') : 'E-posta bulunamadı.');
+            var html = '<b>Hunter sonucu</b><br>🌐 ' + esc(domain) + '<br>';
+            if (emails.length) {
+              html += emails.map(function (item) {
+                return esc(item.value || item.email || '');
+              }).filter(Boolean).join('<br>');
+            } else {
+              html += 'E-posta bulunamadı.';
+            }
+            box.innerHTML = html;
           });
       })
       .catch(function (error) {
@@ -80,38 +98,41 @@
   }
 
   function renderCard(row) {
-    var score = calculateScore(row);
+    var leadScore = score(row);
     var id = row.source_external_id || row.url || row.sourceUrl || '';
     var name = row.name || row.title || 'Bilinmeyen firma';
-    return '<div class="lead-card" data-id="' + esc(id) + '" data-score="' + score + '" style="padding:16px;border:1px solid #ddd;border-radius:10px;margin:8px 0;background:#fff">' +
-      '<b>' + esc(name) + '</b><br>' +
-      esc(row.country || row.countryCode || '') + ' · ' + esc(row.role || row.type || '') + '<br>' +
-      '<small>' + esc(row.address || '') + '</small><br>' +
-      '<small>Sevkiyat: ' + esc(row.shipments || row.totalShipments || 0) + ' · Son: ' + esc(row.last || row.mostRecentShipment || '—') + '</small>' +
-      '<div style="margin:10px 0"><strong>PuduBag Skoru: ' + score + '/100</strong></div>' +
-      '<button type="button" class="hunter-btn">Hunter ile Zenginleştir</button> ' +
-      '<button type="button" class="watch-btn">⭐ Takibe Al</button> ' +
-      '<button type="button" class="crm-btn">CRM Ekle</button>' +
-      '<div class="hunter-box" style="margin-top:10px;padding:10px;background:#f5f5f5"></div>' +
-      '<div class="lead-msg" style="margin-top:8px"></div>' +
-      '</div>';
+    var html = '';
+    html += '<div class="lead-card" data-id="' + esc(id) + '" data-score="' + leadScore + '" style="padding:16px;border:1px solid #ddd;border-radius:10px;margin:8px 0;background:#fff">';
+    html += '<b>' + esc(name) + '</b><br>';
+    html += esc(row.country || row.countryCode || '') + ' · ' + esc(row.role || row.type || '') + '<br>';
+    html += '<small>' + esc(row.address || '') + '</small><br>';
+    html += '<small>Sevkiyat: ' + esc(row.shipments || row.totalShipments || 0) + ' · Son: ' + esc(row.last || row.mostRecentShipment || '—') + '</small>';
+    html += '<div style="margin:10px 0"><strong>PuduBag Skoru: ' + leadScore + '/100</strong></div>';
+    html += '<button type="button" class="hunter-btn">Hunter ile Zenginleştir</button> ';
+    html += '<button type="button" class="watch-btn">⭐ Takibe Al</button> ';
+    html += '<button type="button" class="crm-btn">CRM Ekle</button>';
+    html += '<div class="hunter-box" style="margin-top:10px;padding:10px;background:#f5f5f5"></div>';
+    html += '<div class="lead-msg" style="margin-top:8px"></div>';
+    html += '</div>';
+    return html;
   }
 
   function bindCards() {
-    document.querySelectorAll('#realImportResults .lead-card').forEach(function (card) {
+    var cards = document.querySelectorAll('#realImportResults .lead-card');
+    cards.forEach(function (card) {
       var id = card.getAttribute('data-id');
-      var score = Number(card.getAttribute('data-score'));
+      var leadScore = Number(card.getAttribute('data-score'));
       var message = card.querySelector('.lead-msg');
       var watch = card.querySelector('.watch-btn');
       var crm = card.querySelector('.crm-btn');
       var hunter = card.querySelector('.hunter-btn');
       var hunterBox = card.querySelector('.hunter-box');
-      var nameEl = card.querySelector('b');
+      var name = card.querySelector('b');
 
       watch.addEventListener('click', function () {
         message.textContent = '⏳ Takibe alınıyor...';
         watch.disabled = true;
-        saveLead(id, 'qualified', true, score).then(function () {
+        saveLead(id, 'qualified', true, leadScore).then(function () {
           message.textContent = '⭐ Takip listesine eklendi.';
           watch.textContent = '✓ Takipte';
         }).catch(function (error) {
@@ -123,7 +144,7 @@
       crm.addEventListener('click', function () {
         message.textContent = '⏳ CRM kaydediliyor...';
         crm.disabled = true;
-        saveLead(id, 'contacted', false, score).then(function () {
+        saveLead(id, 'contacted', false, leadScore).then(function () {
           message.textContent = '✓ CRM kaydedildi.';
         }).catch(function (error) {
           message.textContent = '❌ CRM hatası: ' + error.message;
@@ -132,7 +153,7 @@
       });
 
       hunter.addEventListener('click', function () {
-        enrich(nameEl ? nameEl.textContent : '', hunterBox, hunter);
+        enrich(name ? name.textContent : '', hunterBox, hunter);
       });
     });
   }
@@ -141,15 +162,12 @@
     var view = document.getElementById('view-buyers');
     if (!view) return;
 
-    view.innerHTML = '<div style="padding:20px">' +
-      '<h2>ImportYeti Gerçek Veri Arama</h2>' +
+    view.innerHTML = '<div style="padding:20px"><h2>ImportYeti Gerçek Veri Arama</h2>' +
       '<div style="display:flex;gap:10px;max-width:800px">' +
       '<input id="liveBuyerQuery" type="text" placeholder="Ürün veya firma: backpack" style="flex:1;padding:12px">' +
       '<button id="liveBuyerSearch" type="button" style="padding:12px 22px">GERÇEK VERİYİ ARA</button>' +
-      '</div>' +
-      '<div id="realImportStatus" style="margin:14px 0"></div>' +
-      '<div id="realImportResults"></div>' +
-      '</div>';
+      '</div><div id="realImportStatus" style="margin:14px 0"></div>' +
+      '<div id="realImportResults"></div></div>';
 
     var input = document.getElementById('liveBuyerQuery');
     var button = document.getElementById('liveBuyerSearch');
@@ -165,7 +183,7 @@
       button.disabled = true;
       status.textContent = 'ImportYeti aranıyor...';
       results.innerHTML = '';
-      request(importUrl, { query: query, page: 1 })
+      post(importUrl, { query: query, page: 1 })
         .then(function (data) {
           var rows = Array.isArray(data.results) ? data.results : [];
           status.textContent = rows.length + ' gerçek sonuç bulundu.';
@@ -188,6 +206,6 @@
 
   window.renderLiveBuyers = mount;
   window.runImportYetiSearch = function (query) {
-    return request(importUrl, { query: query, page: 1 });
+    return post(importUrl, { query: query, page: 1 });
   };
-})();
+}());
